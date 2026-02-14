@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { User } from '../models/user.model.js';
 import { uploadOnCloudinary } from '../utils/fileupload.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
+import jwt from 'jsonwebtoken';
 
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -187,4 +188,77 @@ const logoutUser = asyncHandler(async (req, res) => {
 
 })
 
-export {registerUser, loginUser, logoutUser};
+const RefreshAccessToken = asyncHandler(async (req, res) => {
+  const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken;
+
+
+if(!incomingRefreshToken){
+  return new ApiError(400, 'unauthorized request');
+}
+
+try {
+  const decodedToken =  jwt.verify(
+    incomingRefreshToken,
+    process.env.REFRESH_TOKEN_SECRET,
+  )
+  
+  const user = await User.findById(decodedToken?._id);
+  if(!user){
+    return new ApiError(401, 'Invalid refresh token');
+  }
+  
+  if(incomingRefreshToken !== user?.refreshToken){
+    return new ApiError(401, 'refresh token is expired or used');
+  }
+  
+  const options = {
+    httpOnly: true,
+    secure: true,
+  }
+  
+  const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id);
+  
+  return res
+  .status(200)
+  .cookie('accessToken', accessToken, options)
+  .cookie('refreshToken', newRefreshToken, options)
+  .json(
+    new ApiResponse(
+      200,
+      { accessToken, refreshToken: newRefreshToken },
+      'Access token refreshed successfully'
+    )
+  )
+} catch (error) {
+  throw new ApiError(401, error?.message || 'Invalid refresh token');
+}
+
+})
+
+const changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+
+  if(!oldPassword || !newPassword) {
+    return new ApiError(400, 'Both old and new passwords are required');
+  }
+
+  const user = await User.findById(req.user?._id);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if(!isPasswordCorrect){
+    return new ApiError(400, 'Invalid old password');
+  }
+
+  user.password = newPassword;
+  await user.save({ValidateBeforeSave: false});
+
+  return res
+  .status(200)
+  .json(
+    new ApiResponse(200, {}, 'Password changed successfully')
+  )
+})
+
+
+
+export {registerUser, loginUser, logoutUser, RefreshAccessToken};

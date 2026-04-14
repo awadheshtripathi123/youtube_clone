@@ -1,6 +1,4 @@
 import { v2 as cloudinary } from "cloudinary";
-import fs from "fs";
-import path from "path";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -8,68 +6,47 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const uploadOnCloudinary = async (localFilePath, resourceType = "image") => { 
-  try{
-     if(!localFilePath) return null;
-     
-     const absolutePath = path.resolve(localFilePath);
-     
-     if (!fs.existsSync(absolutePath)) {
-       console.error("File does not exist:", absolutePath);
-       return null;
-     }
+const uploadOnCloudinary = async (fileBuffer, resourceType = "image") => { 
+  try {
+     if(!fileBuffer) return null;
 
      const uploadOptions = {
        resource_type: resourceType,
-       use_filename: true,
-       unique_filename: false,
-       overwrite: true,
-       timeout: 600000, // 10 minutes timeout for large files
+       timeout: 600000, 
      };
 
-     let response;
      if (resourceType === "video") {
-       uploadOptions.chunk_size = 50000000; // 50MB chunks to significantly speed up uploads
-       response = await new Promise((resolve, reject) => {
-         cloudinary.uploader.upload_large(absolutePath, uploadOptions, (error, result) => {
-           if (error) reject(error);
-           else resolve(result);
-         });
-       });
-     } else {
-       response = await new Promise((resolve, reject) => {
-         cloudinary.uploader.upload(absolutePath, uploadOptions, (error, result) => {
-           if (error) reject(error);
-           else resolve(result);
-         });
-       });
+       uploadOptions.chunk_size = 50000000;
      }
-     
-     console.log("Upload successful:", response.secure_url);
-     
-     if (fs.existsSync(absolutePath)) {
-       fs.unlinkSync(absolutePath);
-     }
-     return response;
+
+     return await new Promise((resolve, reject) => {
+       const uploadStream = cloudinary.uploader.upload_stream(
+         uploadOptions,
+         (error, result) => {
+           if (error) {
+             console.error("Cloudinary upload error inside stream:", error);
+             reject(error);
+           } else {
+             console.log("Upload successful:", result.secure_url);
+             resolve(result);
+           }
+         }
+       );
+       uploadStream.end(fileBuffer);
+     });
   }
   catch(error){
-    console.error("Cloudinary upload error:", error.message);
-    console.error("Error code:", error.http_code);
-    console.error("Error:", JSON.stringify(error, null, 2));
-    
-    if (localFilePath && fs.existsSync(localFilePath)) {
-      fs.unlinkSync(localFilePath);
-    }
+    console.error("Cloudinary upload error:", error);
     return null;
   }
 }
 
-const uploadVideoOnCloudinary = async (localFilePath) => {
-  return uploadOnCloudinary(localFilePath, "video");
+const uploadVideoOnCloudinary = async (fileBuffer) => {
+  return uploadOnCloudinary(fileBuffer, "video");
 }
 
-const uploadImageOnCloudinary = async (localFilePath) => {
-  return uploadOnCloudinary(localFilePath, "image");
+const uploadImageOnCloudinary = async (fileBuffer) => {
+  return uploadOnCloudinary(fileBuffer, "image");
 }
 
 export { uploadOnCloudinary, uploadVideoOnCloudinary, uploadImageOnCloudinary };

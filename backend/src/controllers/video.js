@@ -13,20 +13,20 @@ const publishVideo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Title and description are required");
   }
 
-  const videoFileLocalPath = req.files?.videoFile[0]?.path;
-  const thumbnailLocalPath = req.files?.thumbnail[0]?.path;
+  const videoFileBuffer = req.files?.videoFile?.[0]?.buffer;
+  const thumbnailBuffer = req.files?.thumbnail?.[0]?.buffer;
 
-  if (!videoFileLocalPath) {
+  if (!videoFileBuffer) {
     throw new ApiError(400, "Video file is required");
   }
-  if (!thumbnailLocalPath) {
+  if (!thumbnailBuffer) {
     throw new ApiError(400, "Thumbnail is required");
   }
 
   // Fire off both uploads at the same time so the user isn't kept waiting forever
   const [videoFile, thumbnail] = await Promise.all([
-    uploadVideoOnCloudinary(videoFileLocalPath),
-    uploadImageOnCloudinary(thumbnailLocalPath)
+    uploadVideoOnCloudinary(videoFileBuffer),
+    uploadImageOnCloudinary(thumbnailBuffer)
   ]);
 
   if (!videoFile) {
@@ -179,9 +179,9 @@ const updateVideo = asyncHandler(async (req, res) => {
   if (title) updateFields.title = title;
   if (description) updateFields.description = description;
 
-  const thumbnailLocalPath = req.file?.path;
-  if (thumbnailLocalPath) {
-    const thumbnail = await uploadOnCloudinary(thumbnailLocalPath);
+  const thumbnailBuffer = req.file?.buffer;
+  if (thumbnailBuffer) {
+    const thumbnail = await uploadImageOnCloudinary(thumbnailBuffer);
     if (thumbnail) {
       updateFields.thumbnail = thumbnail.url;
     }

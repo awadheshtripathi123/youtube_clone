@@ -58,23 +58,22 @@ const registerUser = asyncHandler(async (req, res) => {
   if (existedUser) {
     throw new ApiError(409, "User already exists");
   }
-  const avatarLocalPath = req.files?.avatar[0]?.path;
-  // const coverImageLocalPath = req.files?.coverImage[0]?.path;
+  const avatarBuffer = req.files?.avatar[0]?.buffer;
 
-  let coverImageLocalPath;
+  let coverImageBuffer;
   if (
     req.files &&
     Array.isArray(req.files.coverImage) &&
     req.files.coverImage.length > 0
   ) {
-    coverImageLocalPath = req.files.coverImage[0].path;
+    coverImageBuffer = req.files.coverImage[0].buffer;
   }
 
-  if (!avatarLocalPath) {
+  if (!avatarBuffer) {
     throw new ApiError(400, "Avatar is required");
   }
-  const avatar = await uploadImageOnCloudinary(avatarLocalPath);
-  const coverImage = await uploadImageOnCloudinary(coverImageLocalPath);
+  const avatar = await uploadImageOnCloudinary(avatarBuffer);
+  const coverImage = await uploadImageOnCloudinary(coverImageBuffer);
 
   if (!avatar) {
     throw new ApiError(500, "Failed to upload avatar");
@@ -290,13 +289,13 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
 });
 
 const updateUserAvatar = asyncHandler(async (req, res) => {
-  const avatarLocalPath = req.file?.path;
+  const avatarBuffer = req.file?.buffer;
 
-  if (!avatarLocalPath) {
+  if (!avatarBuffer) {
     throw new ApiError(400, "Avatar file is missing");
   }
 
-  const avatar = await uploadImageOnCloudinary(avatarLocalPath);
+  const avatar = await uploadImageOnCloudinary(avatarBuffer);
 
   if (!avatar.url) {
     throw new ApiError(500, "Error while uploading avatar");
@@ -326,13 +325,13 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
-  const coverImageLocalPath = req.file?.path;
+  const coverImageBuffer = req.file?.buffer;
 
-  if (!coverImageLocalPath) {
+  if (!coverImageBuffer) {
     throw new ApiError(400, "Cover image file is missing");
   }
 
-  const coverImage = await uploadImageOnCloudinary(coverImageLocalPath);
+  const coverImage = await uploadImageOnCloudinary(coverImageBuffer);
 
   if (!coverImage.url) {
     throw new ApiError(500, "Error while uploading cover image");

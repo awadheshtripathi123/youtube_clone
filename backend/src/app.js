@@ -17,7 +17,13 @@ app.use(helmet());
 app.use(limiter);
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN,
+  origin: function (origin, callback) {
+    if (!origin || origin === process.env.CORS_ORIGIN || origin.startsWith('http://localhost') || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }))
 

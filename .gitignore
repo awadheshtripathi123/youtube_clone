@@ -1,2 +1,8 @@
 .env
 node_modules/
+# Ignore uploads/temp files
+backend/public/temp/
+*.mp4
+backend/public/temp/
+backend/public/temp/*
+*.mp4
